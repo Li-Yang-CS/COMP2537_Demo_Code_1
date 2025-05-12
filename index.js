@@ -27,6 +27,8 @@ const expireTime = 1 * 60 * 60 * 1000; // 1 hour
 app.use(express.urlencoded({ extended: false }));
 app.use(express.static(__dirname + "/public"));
 
+app.set("view engine", "ejs");
+
 // Session store
 const mongoUrl = `mongodb+srv://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_HOST}/sessions`;
 app.use(
@@ -74,99 +76,40 @@ function requireAuth(req, res, next) {
   next();
 }
 
-// Routes
-// Home
-app.get("/", (req, res) => {
+// From Example
+function isValidSession(req) {
   if (req.session.authenticated) {
-    return res.send(`
-      <h1>Hello, ${req.session.username}</h1>
-      <a href="/members">Members Area</a><br>
-      <a href="/logout">Log Out</a>
-    `);
+    return true;
   }
-  res.send(`
-    <h1>Welcome</h1>
-    <a href="/signup">Sign Up</a><br>
-    <a href="/login">Log In</a>
-  `);
-});
+  return false;
+}
 
-// Sign-up
-app
-  .route("/signup")
-  .get((req, res) => {
-    res.send(`
-      <h1>Sign Up</h1>
-      <form method="post">
-        <input name="username" placeholder="Username" required><br>
-        <input name="email" type="email" placeholder="Email" required><br>
-        <input name="password" type="password" placeholder="Password" required><br>
-        <button>Sign Up</button>
-      </form>
-    `);
-  })
-  .post(async (req, res) => {
-    const { error, value } =
-      signupSchema.validate(req.body);
-    if (error) {
-      return res.send(
-        `<p style="color:red">${error.details[0].message}</p><a href="/signup">Retry</a>`
-      );
-    }
-    const hashed = await bcrypt.hash(
-      value.password,
-      saltRounds
-    );
-    await userCollection.insertOne({
-      username: value.username,
-      email: value.email,
-      password: hashed,
-    });
-    req.session.authenticated = true;
-    req.session.username = value.username;
-    res.redirect("/members");
-  });
+function sessionValidation(req, res, next) {
+  if (isValidSession(req)) {
+    next();
+  } else {
+    res.redirect("/login");
+  }
+}
 
-// Log-in
-app
-  .route("/login")
-  .get((req, res) => {
-    res.send(`
-      <h1>Log In</h1>
-      <form method="post">
-        <input name="email" type="email" placeholder="Email" required><br>
-        <input name="password" type="password" placeholder="Password" required><br>
-        <button>Log In</button>
-      </form>
-    `);
-  })
-  .post(async (req, res) => {
-    const { error, value } = loginSchema.validate(
-      req.body
-    );
-    if (error) {
-      return res.send(
-        `<p style="color:red">${error.details[0].message}</p><a href="/login">Retry</a>`
-      );
-    }
-    const found = await userCollection.findOne({
-      email: value.email,
+function isAdmin(req) {
+  if (req.session.user_type == "admin") {
+    return true;
+  }
+  return false;
+}
+
+function adminAuthorization(req, res, next) {
+  if (!isAdmin(req)) {
+    res.status(403);
+    res.render("errorMessage", {
+      error: "Not Authorized",
     });
-    if (
-      !found ||
-      !(await bcrypt.compare(
-        value.password,
-        found.password
-      ))
-    ) {
-      return res.send(
-        `<p>Invalid email or password</p><a href="/login">Retry</a>`
-      );
-    }
-    req.session.authenticated = true;
-    req.session.username = found.username;
-    res.redirect("/members");
-  });
+    return;
+  } else {
+    next();
+  }
+}
 
 // NoSQL Injection
 app.get("/nosql-injection", async (req, res) => {
@@ -199,21 +142,108 @@ app.get("/nosql-injection", async (req, res) => {
   res.send(`<h1>Hello ${username}</h1>`);
 });
 
-// Members area
+// Routes
+// Home EJS
+app.get("/", (req, res) => {
+  res.render("index");
+});
+
+// Sign-up
+app
+  .route("/signup")
+  .get((req, res) => {
+    res.render("signup", {
+      errorMessage: null,
+    });
+  })
+  .post(async (req, res) => {
+    const { error, value } =
+      signupSchema.validate(req.body);
+    if (error) {
+      return res.render("signup", {
+        errorMessage: error.details[0].message,
+      });
+    }
+    const hashed = await bcrypt.hash(
+      value.password,
+      saltRounds
+    );
+    await userCollection.insertOne({
+      username: value.username,
+      email: value.email,
+      password: hashed,
+      user_type: "user",
+    });
+    req.session.authenticated = true;
+    req.session.username = value.username;
+    res.redirect("/members");
+  });
+
+// Log-in
+app
+  .route("/login")
+  .get((req, res) => {
+    res.render("login", {
+      errorMessage: null,
+    });
+  })
+  .post(async (req, res) => {
+    const { error, value } = loginSchema.validate(
+      req.body
+    );
+    if (error) {
+      return res.render("login", {
+        errorMessage: error.details[0].message,
+      });
+    }
+    const found = await userCollection.findOne({
+      email: value.email,
+    });
+    if (
+      !found ||
+      !(await bcrypt.compare(
+        value.password,
+        found.password
+      ))
+    ) {
+      return res.render("login", {
+        errorMessage: "Invalid email or password",
+      });
+    }
+    req.session.authenticated = true;
+    req.session.username = found.username;
+    req.session.user_type = found.user_type;
+    res.redirect("/members");
+  });
+
+// Members area EJS
 app.get("/members", requireAuth, (req, res) => {
-  const pics = [
+  const images = [
     "3.0CSL.jpg",
     "e92.jpg",
     "f80.jpg",
   ];
-  const pick =
-    pics[Math.floor(Math.random() * pics.length)];
-  res.send(`
-    <h1>Hello, ${req.session.username}</h1>
-    <img src="/${pick}" style="width:1000px"><br>
-    <a href="/logout">Logout</a>
-  `);
+
+  res.render("members", {
+    username: req.session.username,
+    images: images,
+  });
 });
+
+// Admin area EJS
+app.get(
+  "/admin",
+  sessionValidation,
+  adminAuthorization,
+  async (req, res) => {
+    const result = await userCollection
+      .find()
+      .project({ username: 1, _id: 1 })
+      .toArray();
+
+    res.render("admin", { users: result });
+  }
+);
 
 // Logout
 app.get("/logout", (req, res) => {
@@ -221,10 +251,10 @@ app.get("/logout", (req, res) => {
   res.redirect("/");
 });
 
-// 404 catch-all
-app.use((req, res) =>
-  res.status(404).send("404 Not Found")
-);
+// 404 catch-all EJS
+app.get("*", (req, res) => {
+  res.status(404).render("404");
+});
 
 // Start server
 app.listen(PORT, () =>
