@@ -1,13 +1,14 @@
 <%- include('templates/header') %>
 
-<h1>Hello, <%= username %></h1>
+<div class="mb-6">
+  <h1 class="text-2xl font-bold mb-4">Hello, <%= username %></h1>
+  <a href="/logout" class="inline-block bg-red-500 hover:bg-red-600 text-white rounded px-4 py-2 mb-6">Log Out</a>
+</div>
 
-<div class="row row-cols-1 row-cols-md-3 g-4">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
   <% for (let img of images) { %>
-  <div class="col">
-    <div class="card h-100">
-      <img src="/<%= img %>" class="card-img-top" alt="BMW">
-    </div>
+  <div class="bg-white rounded-lg shadow-md overflow-hidden">
+    <img src="/<%= img %>" class="w-full h-auto" alt="BMW">
   </div>
   <% } %>
 </div>

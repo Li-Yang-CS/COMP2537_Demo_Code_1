@@ -1,7 +1,12 @@
 <%- include('templates/header') %>
 
-  <h1>Welcome</h1>
-  <a href="/signup">Sign Up</a><br>
-  <a href="/login">Log In</a>
+  <div class="text-center">
+    <h1 class="text-3xl font-bold mb-6">Welcome</h1>
+    <div class="space-y-3">
+      <a href="/signup" class="inline-block bg-blue-500 hover:bg-blue-600 text-white rounded px-6 py-2 w-48">Sign Up</a>
+      <br>
+      <a href="/login" class="inline-block bg-gray-500 hover:bg-gray-600 text-white rounded px-6 py-2 w-48">Log In</a>
+    </div>
+  </div>
 
 <%- include('templates/footer') %>
