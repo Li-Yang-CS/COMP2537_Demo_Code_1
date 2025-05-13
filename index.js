@@ -103,7 +103,7 @@ function adminAuthorization(req, res, next) {
   if (!isAdmin(req)) {
     res.status(403);
     res.render("errorMessage", {
-      error: "Not Authorized",
+      error: "Not Authorized - You must be an admin to access this page.",
     });
     return;
   } else {
@@ -238,10 +238,77 @@ app.get(
   async (req, res) => {
     const result = await userCollection
       .find()
-      .project({ username: 1, _id: 1 })
+      .project({
+        username: 1,
+        user_type: 1,
+        _id: 1,
+      })
       .toArray();
 
     res.render("admin", { users: result });
+  }
+);
+
+// Add new routes for promote/demote functionality
+app.get(
+  "/promote/:id",
+  sessionValidation,
+  adminAuthorization,
+  async (req, res) => {
+    const userId = req.params.id;
+
+    try {
+      // Update the user's type to admin
+      await userCollection.updateOne(
+        {
+          _id: new require("mongodb").ObjectId(
+            userId
+          ),
+        },
+        { $set: { user_type: "admin" } }
+      );
+      res.redirect("/admin");
+    } catch (error) {
+      console.error(
+        "Error promoting user:",
+        error
+      );
+      res.status(500).render("errorMessage", {
+        error:
+          "Failed to promote user. Please try again.",
+      });
+    }
+  }
+);
+
+app.get(
+  "/demote/:id",
+  sessionValidation,
+  adminAuthorization,
+  async (req, res) => {
+    const userId = req.params.id;
+
+    try {
+      // Update the user's type to regular user
+      await userCollection.updateOne(
+        {
+          _id: new require("mongodb").ObjectId(
+            userId
+          ),
+        },
+        { $set: { user_type: "user" } }
+      );
+      res.redirect("/admin");
+    } catch (error) {
+      console.error(
+        "Error demoting user:",
+        error
+      );
+      res.status(500).render("errorMessage", {
+        error:
+          "Failed to demote user. Please try again.",
+      });
+    }
   }
 );
 

@@ -1,9 +1,11 @@
 <%- include("templates/header") %> 
-	<div>Users:</div>
+    <h1>Admin Dashboard</h1>
+    <h2>User Management</h2>
+    <p>Total users: <%= users.length %></p>
     <ul>
         <% let i=0; %>
-		<% for(i=0; i < users.length; i++) { %>
+        <% for(i=0; i < users.length; i++) { %>
         <%- include('templates/user', {user: users[i]})  %> 
         <% } %> 
     </ul>
-<%- include("templates/footer") %> 
+<%- include("templates/footer") %>

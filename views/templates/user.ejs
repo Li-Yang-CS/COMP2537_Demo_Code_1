@@ -1,1 +1,9 @@
-<li> <%= user.username %> </li>
+<li>
+    <span><%= user.username %></span> - 
+    <span><%= user.user_type %></span>
+    <% if (user.user_type === "user") { %>
+        <a href="/promote/<%= user._id %>">Promote to Admin</a>
+    <% } else { %>
+        <a href="/demote/<%= user._id %>">Demote to User</a>
+    <% } %>
+</li>
